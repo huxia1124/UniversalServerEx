@@ -19,9 +19,7 @@
 #include "Server.h"
 #include <string.h>
 #include <iostream>
-#include <sys/types.h>
 #include <linux/unistd.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
@@ -85,14 +83,6 @@ void SubServer::CreateWorkerThreads()
 	}
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Function to get the id of current thread
-pid_t gettid(void)
-{
-	return syscall(__NR_gettid);
-}
-
-
 bool SubServer::CreateListeningHandler(unsigned int port)
 {
 	CreateWorkerThreads();
@@ -122,7 +112,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 			bufferevent_setcb(bev, [](auto bev, auto ctx) {
 
 				auto bfd = bufferevent_getfd(bev);
-				auto tid = gettid();
+				auto tid = std::this_thread::get_id();
 				std::cout << "data received! thread=" << tid << ", FD=" << bfd << std::endl;
 
 				/* This callback is invoked when there is data to read on bev. */
@@ -135,7 +125,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 			}, NULL, [](auto bev, auto events, auto ctx) {
 
 				auto bfd = bufferevent_getfd(bev);
-				auto tid = gettid();
+				auto tid = std::this_thread::get_id();
 				std::cout << "Error! thread=" << tid << ", Event=0x" << std::hex << events << std::dec << ", FD=" << bfd << std::endl;
 
 				if (events & BEV_EVENT_ERROR)
@@ -154,7 +144,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 
 		_port = port;
 
-		auto tid = gettid();
+		auto tid = std::this_thread::get_id();
 		std::cout << "SubServer started, listening on port " << port <<"! thread=" << tid << std::endl;
 		event_base_dispatch(_base);
 
