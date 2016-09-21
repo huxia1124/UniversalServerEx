@@ -51,6 +51,7 @@ void SubServer::onThreadStart(size_t threadIndex)
 	_baseWorkers[threadIndex] = event_base_new();
 	_workerDefaultEvents[threadIndex] = event_new(_baseWorkers[threadIndex], -1, EV_READ, [](auto fd, auto what, auto arg) {
 
+		//Do nothing
 
 	}, this);
 
@@ -65,9 +66,7 @@ void SubServer::onThreadEnd(size_t threadIndex)
 
 void SubServer::onThreadRun(size_t threadIndex)
 {
-	//event_base_loop(_baseWorkers[threadIndex], EVLOOP_ONCE);
 	event_base_dispatch(_baseWorkers[threadIndex]);
-
 }
 
 void SubServer::CreateWorkerThreads()

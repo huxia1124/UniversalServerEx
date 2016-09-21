@@ -47,7 +47,7 @@ protected:
 	evconnlistener *_listener = nullptr;
 	unsigned int _port = 0;
 	event_base **_baseWorkers;
-	event **_workerDefaultEvents;
+	event **_workerDefaultEvents;						//Empty events just to keep the event loop running
 	std::vector<std::shared_ptr<std::thread>> _workerThreads;
 	std::shared_ptr<std::thread> _listeningThread;
 	unsigned int _workerThreadNumber;
@@ -86,6 +86,8 @@ protected:
 	
 	
 public:
+
+	//Create a TCP subserver at specified port
 	bool CreateSubServer(unsigned int port, void *param);
 
 	void Start();
