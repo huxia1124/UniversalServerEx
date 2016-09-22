@@ -19,9 +19,9 @@
 #include "Server.h"
 #include <string.h>
 #include <iostream>
-#include <linux/unistd.h>
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <event2/event-config.h>
+#include <event2/thread.h>
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -39,6 +39,11 @@ SubServer::SubServer(unsigned int workerThreadNumber) : _workerThreadNumber(work
 
 SubServer::~SubServer()
 {
+	for (int i = 0; i < _workerThreadNumber; i++)
+	{
+		_workerThreads[i]->join();
+	}
+
 	delete[]_workerDefaultEvents;
 	delete[]_baseWorkers;
 	event_base_free(_base);
@@ -46,18 +51,22 @@ SubServer::~SubServer()
 
 void SubServer::onThreadStart(size_t threadIndex)
 {
+
+	std::cout << "Worker thread started. Thread index=" << threadIndex << std::endl;
 	_baseWorkers[threadIndex] = event_base_new();
 	_workerDefaultEvents[threadIndex] = event_new(_baseWorkers[threadIndex], -1, EV_READ, [](auto fd, auto what, auto arg) {
-
 		//Do nothing
-
+		//std::cout << "Dummy event triggered. TID=" << std::this_thread::get_id() << std::endl;
 	}, this);
 
-	event_add(_workerDefaultEvents[threadIndex], nullptr);
+	struct timeval five_seconds = { 500,0 };
+
+	event_add(_workerDefaultEvents[threadIndex], &five_seconds);
 }
 
 void SubServer::onThreadEnd(size_t threadIndex)
 {
+	std::cout << "Worker thread terminated. Thread index=" << threadIndex << std::endl;
 	event_base_free(_baseWorkers[threadIndex]);
 	_baseWorkers[threadIndex] = nullptr;
 }
@@ -65,6 +74,11 @@ void SubServer::onThreadEnd(size_t threadIndex)
 void SubServer::onThreadRun(size_t threadIndex)
 {
 	event_base_dispatch(_baseWorkers[threadIndex]);
+}
+
+void SubServer::SetServer(Server *server)
+{
+	_server = server;
 }
 
 void SubServer::CreateWorkerThreads()
@@ -86,6 +100,8 @@ void SubServer::CreateWorkerThreads()
 bool SubServer::CreateListeningHandler(unsigned int port)
 {
 	CreateWorkerThreads();
+
+	std::unique_lock<std::mutex> lock(mtx);
 
 	std::shared_ptr<std::thread> listeningThread = std::make_shared<std::thread>([port,this](auto ptr) {
 
@@ -110,7 +126,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 				base, fd, BEV_OPT_CLOSE_ON_FREE);
 
 			bufferevent_setcb(bev, [](auto bev, auto ctx) {
-
+				SubServer *pThisInner = (SubServer*)ctx;
 				auto bfd = bufferevent_getfd(bev);
 				auto tid = std::this_thread::get_id();
 				std::cout << "data received! thread=" << tid << ", FD=" << bfd << std::endl;
@@ -135,22 +151,42 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 				}
 				if (events & BEV_EVENT_EOF) {	//socket closed
 				}
-			}, NULL);
+			}, pThis);
 
 			bufferevent_enable(bev, EV_READ | EV_WRITE);
 
 
 		}, this, 0, -1, (sockaddr*)&addr, sizeof(addr));
 
-		_port = port;
-
 		auto tid = std::this_thread::get_id();
-		std::cout << "SubServer started, listening on port " << port <<"! thread=" << tid << std::endl;
-		event_base_dispatch(_base);
+		if (_listener)
+		{
+			_listenerReady = true;
+			_port = port;
+			std::cout << "SubServer started, listening on port " << port << "! thread=" << tid << std::endl;
+			listenReady.notify_all();
+			event_base_dispatch(_base);
+		}
+		else
+		{
+			std::cout << "SubServer failed to listen on port " << port << "! thread=" << tid << std::endl;
+			this->ReleaseWorkerThreads();
+			listenReady.notify_all();
+		}
 
 	}, this);
 
-	_listeningThread = listeningThread;	
+	listenReady.wait(lock);
+	if (_listenerReady)
+	{
+		_listeningThread = listeningThread;
+	}
+	else
+	{
+		listeningThread->join();
+	}
+			
+	return _listenerReady;
 }
 
 event_base * SubServer::GetNextAvailableBase()
@@ -158,11 +194,22 @@ event_base * SubServer::GetNextAvailableBase()
 	return _baseWorkers[(_workerThreadIndexBase++) % _workerThreadNumber];
 }
 
+void SubServer::ReleaseWorkerThreads()
+{
+	for (auto i = 0; i < _workerThreadNumber; i++)
+	{
+		//std::cout << "Trigger dummy event " << i << std::endl;
+		event_active(_workerDefaultEvents[i], EV_READ, 0);
+		//event_active(_workerDefaultEvents[i], EV_WRITE, 0);
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 Server::Server()
 {
-
+	_reference = 0;
+	evthread_use_pthreads();
 }
 
 
@@ -170,20 +217,47 @@ Server::~Server()
 {
 }
 
+void Server::IncreaseReference()
+{
+	_reference++;
+}
+
+void Server::DecreaseReference()
+{
+	_reference--;
+	if (_reference == 0) {
+		_shutdownVariable.notify_all();
+	}
+}
+
 bool Server::CreateSubServer(unsigned int port, void *param)
 {
 	auto subServer = std::make_shared<SubServer>();
 
-	subServer->CreateListeningHandler(port);
+	IncreaseReference();
+	subServer->SetServer(this);
+	if (subServer->CreateListeningHandler(port))
+	{
+		subServer->_serverParam = param;
 
-	_subServers.lock(port);
-	_subServers[port] = subServer;
-	_subServers.unlock(port);
+		_subServers.lock(port);
+		_subServers[port] = subServer;
+		_subServers.unlock(port);
+	}
+	else
+	{
+		DecreaseReference();
+		std::wcout << "Failed to create TCP subserver at port " << port << std::endl;
+	}
 }
 
 void Server::Start()
 {
-	//event_base_dispatch(_base);
+	if (_subServers.size() == 0)
+	{
+		std::cout << "No subserver to run. Server terminated..." << std::endl;
+		return;
+	}
 
 	std::unique_lock<std::mutex> mlock(_mtxShutdown);
 	_shutdownVariable.wait(mlock);

@@ -31,8 +31,11 @@
 #include <condition_variable>
 #include "ThreadPool.h"
 #include <vector>
+#include <atomic>
 
 //////////////////////////////////////////////////////////////////////////
+class Server;
+
 
 class SubServer
 {
@@ -51,6 +54,12 @@ protected:
 	std::vector<std::shared_ptr<std::thread>> _workerThreads;
 	std::shared_ptr<std::thread> _listeningThread;
 	unsigned int _workerThreadNumber;
+	void *_serverParam = nullptr;						//Custom server parameter
+	Server *_server = nullptr;
+
+	std::mutex mtx;
+	std::condition_variable listenReady;
+	bool _listenerReady = false;
 
 private:
 	unsigned int _workerThreadIndexBase = 0;
@@ -61,9 +70,11 @@ protected:
 	virtual void onThreadRun(size_t threadIndex);
 
 private:
+	void SetServer(Server *server);
 	void CreateWorkerThreads();
 	bool CreateListeningHandler(unsigned int port);
 	event_base *GetNextAvailableBase();
+	void ReleaseWorkerThreads();
 
 public:
 
@@ -73,6 +84,7 @@ public:
 
 class Server
 {
+	friend class SubServer;
 public:
 	Server();
 	virtual ~Server();
@@ -80,10 +92,14 @@ public:
 protected:
 	std::mutex _mtxShutdown;
 	std::condition_variable _shutdownVariable;
+	std::atomic<int> _reference;
 
 protected:
 	CSTXHashMap<unsigned int, std::shared_ptr<SubServer>> _subServers;
 	
+protected:
+	void IncreaseReference();
+	void DecreaseReference();
 	
 public:
 
