@@ -177,7 +177,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 {
 	CreateWorkerThreads();
 
-	std::unique_lock<std::mutex> lock(mtx);
+	std::future<bool> futureListenerReady = _listenerReady.get_future();
 
 	std::shared_ptr<std::thread> listeningThread = std::make_shared<std::thread>([port,this](auto ptr) {
 
@@ -255,23 +255,23 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 		auto tid = std::this_thread::get_id();
 		if (_listener)
 		{
-			_listenerReady = true;
 			_port = port;
-			std::cout << "SubServer started, listening on port " << port << "! thread=" << tid << std::endl;
-			listenReady.notify_all();
+			std::cout << "SubServer started, listening on port " << port << ". thread=" << tid << std::endl;
+
+			this->_listenerReady.set_value(true);
 			event_base_dispatch(_base);
 		}
 		else
 		{
-			std::cout << "SubServer failed to listen on port " << port << "! thread=" << tid << std::endl;
+			std::cout << "SubServer failed to listen on port " << port << ". thread=" << tid << std::endl;
 			this->ReleaseWorkerThreads();
-			listenReady.notify_all();
+			this->_listenerReady.set_value(false);
 		}
 
 	}, this);
 
-	listenReady.wait(lock);
-	if (_listenerReady)
+	auto listenerReady = futureListenerReady.get();
+	if (listenerReady)
 	{
 		auto fd = evconnlistener_get_fd(_listener);
 		_server->LinkSubserverByFD(port, fd);
@@ -282,7 +282,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 		listeningThread->join();
 	}
 			
-	return _listenerReady;
+	return listenerReady;
 }
 
 event_base * SubServer::GetNextAvailableBase()
@@ -310,7 +310,11 @@ void SubServer::AddNewClient(int fd, const char*ip, unsigned int port)
 Server::Server()
 {
 	_reference = 0;
+#ifdef WIN32
+	evthread_use_windows_threads();
+#else
 	evthread_use_pthreads();
+#endif
 }
 
 

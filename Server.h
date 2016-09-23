@@ -33,6 +33,7 @@
 #include <vector>
 #include <atomic>
 #include "Buffer.h"
+#include <future>
 
 //////////////////////////////////////////////////////////////////////////
 class Server;
@@ -85,9 +86,8 @@ protected:
 	void *_serverParam = nullptr;						//Custom server parameter
 	Server *_server = nullptr;
 
-	std::mutex mtx;
-	std::condition_variable listenReady;
-	bool _listenerReady = false;
+	std::promise<bool> _listenerReady;					//Notified when listener is ready or fail
+
 
 	CSTXHashMap<int, std::shared_ptr<ClientContext>> _clients;
 
