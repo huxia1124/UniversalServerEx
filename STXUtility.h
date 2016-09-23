@@ -87,44 +87,29 @@ public:
 protected:
 	struct HashMapValue
 	{
-		//bool bCSInitialized;
 		std::recursive_mutex mtx;
-		//FastSpinlock lock;
 		std::map<TKey, TValue> mapContent;
 		HashMapValue()
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 		}
 		~HashMapValue()
 		{
-			//DeleteCriticalSection(&cs);
 		}
 		HashMapValue(const HashMapValue &val)
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 			*this = val;
 		}
 		HashMapValue &operator=(const HashMapValue &val)
 		{
-			//if(!bCSInitialized)
-			//	InitializeCriticalSection(&cs);
 			mapContent = val.mapContent;
 			return *this;
 		}
 		void Lock()
 		{
 			mtx.lock();
-
-			//EnterCriticalSection(&cs);
-			//lock.EnterLock();
 		}
 		void Unlock()
 		{
-			//LeaveCriticalSection(&cs);
-			//lock.LeaveLock();
-			
 			mtx.unlock();
 		}
 	};
@@ -273,44 +258,30 @@ public:
 protected:
 	struct HashMapValue
 	{
-		//bool bCSInitialized;
-		//CRITICAL_SECTION cs;
-		//FastSpinlock lock;
 		std::recursive_mutex mtx;
 		std::map<std::string, TValue> mapContent;
 		HashMapValue()
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 		}
 		~HashMapValue()
 		{
-			//DeleteCriticalSection(&cs);
 		}
 		HashMapValue(const HashMapValue &val)
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 			*this = val;
 		}
 		HashMapValue &operator=(const HashMapValue &val)
 		{
-			//if(!bCSInitialized)
-			//	InitializeCriticalSection(&cs);
 			mapContent = val.mapContent;
 			return *this;
 		}
 		void Lock()
 		{
 			mtx.lock();
-			//EnterCriticalSection(&cs);
-			//lock.EnterLock();
 		}
 		void Unlock()
 		{
 			mtx.unlock();
-			//LeaveCriticalSection(&cs);
-			//lock.LeaveLock();
 		}
 
 	};
@@ -458,44 +429,30 @@ public:
 protected:
 	struct HashMapValue
 	{
-		//bool bCSInitialized;
-		//CRITICAL_SECTION cs;
-		//FastSpinlock lock;
 		std::recursive_mutex mtx;
 		std::map<std::wstring, TValue> mapContent;
 		HashMapValue()
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 		}
 		~HashMapValue()
 		{
-			//DeleteCriticalSection(&cs);
 		}
 		HashMapValue(const HashMapValue &val)
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 			*this = val;
 		}
 		HashMapValue &operator=(const HashMapValue &val)
 		{
-			//if(!bCSInitialized)
-			//	InitializeCriticalSection(&cs);
 			mapContent = val.mapContent;
 			return *this;
 		}
 		void Lock()
 		{
 			mtx.lock();
-			//EnterCriticalSection(&cs);
-			//lock.EnterLock();
 		}
 		void Unlock()
 		{
 			mtx.unlock();
-			//LeaveCriticalSection(&cs);
-			//lock.LeaveLock();
 		}
 
 	};
@@ -644,44 +601,30 @@ public:
 protected:
 	struct HashSetValue
 	{
-		//bool bCSInitialized;
-		//CRITICAL_SECTION cs;
-		//FastSpinlock lock;
 		std::recursive_mutex mtx;
 		std::set<TKey> setContent;
 		HashSetValue()
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 		}
 		~HashSetValue()
 		{
-			//DeleteCriticalSection(&cs);
 		}
 		HashSetValue(const HashSetValue &val)
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 			*this = val;
 		}
 		HashSetValue &operator=(const HashSetValue &val)
 		{
-			//if(!bCSInitialized)
-			//	InitializeCriticalSection(&cs);
 			setContent = val.setContent;
 			return *this;
 		}
 		void Lock()
 		{
 			mtx.lock();
-			//EnterCriticalSection(&cs);
-			//lock.EnterLock();
 		}
 		void Unlock()
 		{
 			mtx.unlock();
-			//LeaveCriticalSection(&cs);
-			//lock.LeaveLock();
 		}
 
 	};
@@ -809,44 +752,30 @@ public:
 protected:
 	struct HashSetValue
 	{
-		//bool bCSInitialized;
-		//CRITICAL_SECTION cs;
-		//FastSpinlock lock;
 		std::recursive_mutex mtx;
 		std::set<std::string> setContent;
 		HashSetValue()
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 		}
 		~HashSetValue()
 		{
-			//DeleteCriticalSection(&cs);
 		}
 		HashSetValue(const HashSetValue &val)
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 			*this = val;
 		}
 		HashSetValue &operator=(const HashSetValue &val)
 		{
-			//if(!bCSInitialized)
-			//	InitializeCriticalSection(&cs);
 			setContent = val.setContent;
 			return *this;
 		}
 		void Lock()
 		{
 			mtx.lock();
-			//EnterCriticalSection(&cs);
-			//lock.EnterLock();
 		}
 		void Unlock()
 		{
 			mtx.unlock();
-			//LeaveCriticalSection(&cs);
-			//lock.LeaveLock();
 		}
 
 	};
@@ -974,44 +903,30 @@ public:
 protected:
 	struct HashSetValue
 	{
-		//bool bCSInitialized;
-		//CRITICAL_SECTION cs;
-		//FastSpinlock lock;
 		std::recursive_mutex mtx;
 		std::set<std::wstring> setContent;
 		HashSetValue()
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 		}
 		~HashSetValue()
 		{
-			//DeleteCriticalSection(&cs);
 		}
 		HashSetValue(const HashSetValue &val)
 		{
-			//InitializeCriticalSection(&cs);
-			//bCSInitialized = true;
 			*this = val;
 		}
 		HashSetValue &operator=(const HashSetValue &val)
 		{
-			//if(!bCSInitialized)
-			//	InitializeCriticalSection(&cs);
 			setContent = val.setContent;
 			return *this;
 		}
 		void Lock()
 		{
 			mtx.lock();
-			//EnterCriticalSection(&cs);
-			//lock.EnterLock();
 		}
 		void Unlock()
 		{
 			mtx.unlock();
-			//LeaveCriticalSection(&cs);
-			//lock.LeaveLock();
 		}
 
 	};
