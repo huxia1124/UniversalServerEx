@@ -24,6 +24,27 @@
 #include <event2/thread.h>
 
 //////////////////////////////////////////////////////////////////////////
+// ClientContext
+
+ClientContext::ClientContext(int fd, const char*ip, unsigned int port)
+{
+	_fd = fd;
+	strcpy(_address, ip);
+	_port = port;
+}
+
+ClientContext::~ClientContext()
+{
+	//std::cout << "ClientContext destroyed." << std::endl;
+}
+
+void ClientContext::AppendRecvBufferData(char *buffer, size_t len)
+{
+	_recvBuffer.AppendData(buffer, len);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
 
 SubServer::SubServer(unsigned int workerThreadNumber) : _workerThreadNumber(workerThreadNumber)
 {
@@ -52,7 +73,8 @@ SubServer::~SubServer()
 void SubServer::onThreadStart(size_t threadIndex)
 {
 
-	std::cout << "Worker thread started. Thread index=" << threadIndex << std::endl;
+	auto tid = std::this_thread::get_id();
+	std::cout << "Worker thread started. thread[" << threadIndex << "]=" << tid << std::endl;
 	_baseWorkers[threadIndex] = event_base_new();
 	_workerDefaultEvents[threadIndex] = event_new(_baseWorkers[threadIndex], -1, EV_READ, [](auto fd, auto what, auto arg) {
 		//Do nothing
@@ -66,7 +88,8 @@ void SubServer::onThreadStart(size_t threadIndex)
 
 void SubServer::onThreadEnd(size_t threadIndex)
 {
-	std::cout << "Worker thread terminated. Thread index=" << threadIndex << std::endl;
+	auto tid = std::this_thread::get_id();
+	std::cout << "Worker thread terminated. thread[" << threadIndex << "]=" << tid << std::endl;
 	event_base_free(_baseWorkers[threadIndex]);
 	_baseWorkers[threadIndex] = nullptr;
 }
@@ -74,6 +97,61 @@ void SubServer::onThreadEnd(size_t threadIndex)
 void SubServer::onThreadRun(size_t threadIndex)
 {
 	event_base_dispatch(_baseWorkers[threadIndex]);
+}
+
+void SubServer::preClientReceived(int fd, char *buffer, size_t len)
+{
+	_clients.lock(fd); 
+	auto it = _clients.find(fd);
+	if (it != _clients.end(fd)) {
+		auto clientContext = it->second;
+		_clients.unlock(fd);
+
+		clientContext->AppendRecvBufferData(buffer, len);
+		size_t messageSize = 0;
+		while ((messageSize = isClientDataReadable(clientContext.get())) > 0)
+		{
+			auto &buf = clientContext->_recvBuffer;
+			onClientReceived(clientContext.get(), (char*)buf.GetReadPtr(), messageSize);
+			buf.SkipData(messageSize);
+		}
+		return;
+	}
+	_clients.unlock(fd);
+}
+
+void SubServer::preClientDisconnected(int fd)
+{
+	_clients.lock(fd);
+	auto it = _clients.find(fd);
+	if (it != _clients.end(fd)) {
+		auto clientContext = it->second;
+		_clients.erase(it);
+		_clients.unlock(fd);
+
+		onClientDisconnected(clientContext.get());		
+		return;
+	}
+	_clients.unlock(fd);
+}
+
+void SubServer::onClientReceived(ClientContext *clientContext, char *buffer, size_t len)
+{
+	//TODO: in derived classes
+	auto tid = std::this_thread::get_id();
+	std::cout << len << " bytes of data received! thread=" << tid << ", IP=" << clientContext->_address << std::endl;
+}
+
+void SubServer::onClientDisconnected(ClientContext *clientContext)
+{
+	auto tid = std::this_thread::get_id();
+	std::cout << "Client disconnected! thread=" << tid << ", IP=" << clientContext->_address << std::endl;
+}
+
+size_t SubServer::isClientDataReadable(ClientContext *clientContext)
+{
+	auto &buf = clientContext->_recvBuffer;
+	return buf.GetDataLength();
 }
 
 void SubServer::SetServer(Server *server)
@@ -113,30 +191,47 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 
 		_listener = evconnlistener_new_bind(_base, [](auto listener, auto fd, auto addr_in, auto addr_len, auto ptr) {
 
+			SubServer *pThis = (SubServer*)ptr;
 			char szAddress[INET_ADDRSTRLEN] = { 0 };
 			auto addr_in_ptr = (sockaddr_in*)addr_in;
 			inet_ntop(AF_INET, &(addr_in_ptr->sin_addr), szAddress, INET_ADDRSTRLEN);
 
 			std::cout << "new connection accepted! FD=" << fd << ", IP=" << szAddress << ":" << addr_in_ptr->sin_port << std::endl;
-			SubServer *pThis = (SubServer*)ptr;
+
+			pThis->AddNewClient(fd, szAddress, addr_in_ptr->sin_port);
+
 			/* We got a new connection! Set up a bufferevent for it. */
-			//struct event_base *base = evconnlistener_get_base(listener);
+
 			struct event_base *base = pThis->GetNextAvailableBase();
 			struct bufferevent *bev = bufferevent_socket_new(
 				base, fd, BEV_OPT_CLOSE_ON_FREE);
 
 			bufferevent_setcb(bev, [](auto bev, auto ctx) {
-				SubServer *pThisInner = (SubServer*)ctx;
-				auto bfd = bufferevent_getfd(bev);
-				auto tid = std::this_thread::get_id();
-				std::cout << "data received! thread=" << tid << ", FD=" << bfd << std::endl;
-
 				/* This callback is invoked when there is data to read on bev. */
 				struct evbuffer *input = bufferevent_get_input(bev);
+				auto dataLen = evbuffer_get_length(input);
+				auto dataLenOriginal = dataLen;
 				struct evbuffer *output = bufferevent_get_output(bev);
 
+				auto bfd = bufferevent_getfd(bev);
+
+				SubServer *pThisInner = (SubServer*)ctx;
+				const size_t bufferSize = 2048;
+				char szBuffer[bufferSize];
+				size_t readLen = 0;
+				while (dataLen > 0)
+				{
+					readLen = evbuffer_copyout(input, szBuffer, bufferSize);
+					if (readLen <= 0)
+						break;
+					dataLen -= readLen;
+					pThisInner->preClientReceived(bfd, szBuffer, readLen);
+				}
+
+				evbuffer_drain(input, dataLenOriginal);
+
 				/* Copy all the data from the input buffer to the output buffer. */
-				evbuffer_add_buffer(output, input);
+				//evbuffer_add_buffer(output, input);
 
 			}, NULL, [](auto bev, auto events, auto ctx) {
 
@@ -144,12 +239,13 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 				auto tid = std::this_thread::get_id();
 				std::cout << "Error! thread=" << tid << ", Event=0x" << std::hex << events << std::dec << ", FD=" << bfd << std::endl;
 
+				SubServer *pThisInner = (SubServer*)ctx;
 				if (events & BEV_EVENT_ERROR)
 					perror("Error from bufferevent");
-				if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-					bufferevent_free(bev);
-				}
+
 				if (events & BEV_EVENT_EOF) {	//socket closed
+					pThisInner->preClientDisconnected(bfd);
+					bufferevent_free(bev);
 				}
 			}, pThis);
 
@@ -179,6 +275,8 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 	listenReady.wait(lock);
 	if (_listenerReady)
 	{
+		auto fd = evconnlistener_get_fd(_listener);
+		_server->LinkSubserverByFD(port, fd);
 		_listeningThread = listeningThread;
 	}
 	else
@@ -198,10 +296,15 @@ void SubServer::ReleaseWorkerThreads()
 {
 	for (auto i = 0; i < _workerThreadNumber; i++)
 	{
-		//std::cout << "Trigger dummy event " << i << std::endl;
 		event_active(_workerDefaultEvents[i], EV_READ, 0);
-		//event_active(_workerDefaultEvents[i], EV_WRITE, 0);
 	}
+}
+
+void SubServer::AddNewClient(int fd, const char*ip, unsigned int port)
+{
+	_clients.lock(fd);
+	_clients[fd] = std::make_shared<ClientContext>(fd, ip, port);
+	_clients.unlock(fd);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -228,6 +331,22 @@ void Server::DecreaseReference()
 	if (_reference == 0) {
 		_shutdownVariable.notify_all();
 	}
+}
+
+
+void Server::LinkSubserverByFD(unsigned int port, int fd)
+{
+	_subServers.lock(port);
+	auto it = _subServers.find(port);
+	if (it != _subServers.end(port)) {
+		auto subServer = it->second;
+		_subServers.unlock(port);
+		_subServersByFD.lock(fd);
+		_subServersByFD[fd] = subServer;
+		_subServersByFD.unlock(fd);
+		return;
+	}
+	_subServers.unlock(port);
 }
 
 bool Server::CreateSubServer(unsigned int port, void *param)

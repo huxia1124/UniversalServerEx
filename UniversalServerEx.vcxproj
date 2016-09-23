@@ -63,6 +63,7 @@
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="UniversalServerEx.cpp" />
   </ItemGroup>
@@ -74,6 +75,7 @@
     <None Include="UniversalServerEx-Release.vgdbsettings" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Buffer.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="STXUtility.h" />
     <ClInclude Include="ThreadPool.h" />

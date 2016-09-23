@@ -32,17 +32,45 @@
 #include "ThreadPool.h"
 #include <vector>
 #include <atomic>
+#include "Buffer.h"
 
 //////////////////////////////////////////////////////////////////////////
 class Server;
 
+//////////////////////////////////////////////////////////////////////////
+// ClientContext
+
+class ClientContext
+{
+	friend class SubServer;
+protected:
+	int _fd;
+	Buffer _recvBuffer;
+	char _address[64];
+	unsigned int _port = 0;
+
+public:
+	ClientContext(int fd, const char*ip, unsigned int port);
+	virtual ~ClientContext();
+
+protected:
+	void AppendRecvBufferData(char *buffer, size_t len);
+
+
+public:
+
+
+};
+
+//////////////////////////////////////////////////////////////////////////
+// SubServer
 
 class SubServer
 {
 	friend class Server;
 public:
 	SubServer(unsigned int workerThreadNumber = 4);
-	~SubServer();
+	virtual ~SubServer();
 
 protected:
 
@@ -61,6 +89,8 @@ protected:
 	std::condition_variable listenReady;
 	bool _listenerReady = false;
 
+	CSTXHashMap<int, std::shared_ptr<ClientContext>> _clients;
+
 private:
 	unsigned int _workerThreadIndexBase = 0;
 
@@ -69,12 +99,20 @@ protected:
 	virtual void onThreadEnd(size_t threadIndex);
 	virtual void onThreadRun(size_t threadIndex);
 
+protected:
+	virtual void preClientReceived(int fd, char *buffer, size_t len);
+	virtual void preClientDisconnected(int fd);
+	virtual void onClientReceived(ClientContext *clientContext, char *buffer, size_t len);
+	virtual void onClientDisconnected(ClientContext *clientContext);
+	virtual size_t isClientDataReadable(ClientContext *clientContext);
+
 private:
 	void SetServer(Server *server);
 	void CreateWorkerThreads();
 	bool CreateListeningHandler(unsigned int port);
 	event_base *GetNextAvailableBase();
 	void ReleaseWorkerThreads();
+	void AddNewClient(int fd, const char*ip, unsigned int port);
 
 public:
 
@@ -95,11 +133,13 @@ protected:
 	std::atomic<int> _reference;
 
 protected:
-	CSTXHashMap<unsigned int, std::shared_ptr<SubServer>> _subServers;
-	
+	CSTXHashMap<unsigned int, std::shared_ptr<SubServer>> _subServers;			//port -> subserver
+	CSTXHashMap<int, std::shared_ptr<SubServer>> _subServersByFD;				//fd -> subserver
+
 protected:
 	void IncreaseReference();
 	void DecreaseReference();
+	void LinkSubserverByFD(unsigned int port, int fd);
 	
 public:
 
