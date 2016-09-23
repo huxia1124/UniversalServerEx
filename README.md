@@ -1,10 +1,10 @@
 # UniversalServerEx
-An implementation of multi-threaded TCP asynchronous using libevent. Linux only.
-> This is a VisualGDB project.
+An implementation of multi-threaded TCP asynchronous server using libevent. Currently, it's designed only for linux.
+> This is a VisualGDB project. Test compiled using gcc/g++ 5.2.1
 
 ### Some keywords
  * C++
- * C++11
+ * C++11 (thread, mutex, lambda expresion, smart pointers, atomic ...)
  * TCP
  * libevent
  * Multi-threading
