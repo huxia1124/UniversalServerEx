@@ -81,9 +81,7 @@ void SubServer::onThreadStart(size_t threadIndex)
 		//std::cout << "Dummy event triggered. TID=" << std::this_thread::get_id() << std::endl;
 	}, this);
 
-	struct timeval five_seconds = { 500,0 };
-
-	event_add(_workerDefaultEvents[threadIndex], &five_seconds);
+	event_add(_workerDefaultEvents[threadIndex], nullptr);
 }
 
 void SubServer::onThreadEnd(size_t threadIndex)
