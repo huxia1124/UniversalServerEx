@@ -49,6 +49,7 @@ protected:
 	Buffer _recvBuffer;
 	char _address[64];
 	unsigned int _port = 0;
+	bufferevent *_bev = nullptr;
 
 public:
 	ClientContext(int fd, const char*ip, unsigned int port);
@@ -112,9 +113,12 @@ private:
 	bool CreateListeningHandler(unsigned int port);
 	event_base *GetNextAvailableBase();
 	void ReleaseWorkerThreads();
-	void AddNewClient(int fd, const char*ip, unsigned int port);
+	std::shared_ptr<ClientContext> AddNewClient(int fd, const char*ip, unsigned int port);
 
 public:
+	size_t SendDataToClient(int fd, char *buffer, size_t len);
+	size_t SendDataToClient(ClientContext *clientContext, char *buffer, size_t len);
+	
 
 };
 
@@ -145,6 +149,7 @@ public:
 
 	//Create a TCP subserver at specified port
 	bool CreateSubServer(unsigned int port, void *param);
+	void TerminateSubServer(unsigned int port);
 
 	void Start();
 	

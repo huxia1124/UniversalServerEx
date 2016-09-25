@@ -60,10 +60,17 @@ SubServer::SubServer(unsigned int workerThreadNumber) : _workerThreadNumber(work
 
 SubServer::~SubServer()
 {
+	_clients.foreach([](std::pair<int, std::shared_ptr<ClientContext>> client) {
+		auto fd = bufferevent_getfd(client.second->_bev);
+		evutil_closesocket(fd);
+		bufferevent_free(client.second->_bev);
+	});
+
 	for (int i = 0; i < _workerThreadNumber; i++)
 	{
 		_workerThreads[i]->join();
 	}
+	_listeningThread->join();
 
 	delete[]_workerDefaultEvents;
 	delete[]_baseWorkers;
@@ -135,19 +142,23 @@ void SubServer::preClientDisconnected(int fd)
 
 void SubServer::onClientReceived(ClientContext *clientContext, char *buffer, size_t len)
 {
-	//TODO: in derived classes
+	//TODO: implement in derived classes. respond to the received package
 	auto tid = std::this_thread::get_id();
 	std::cout << len << " bytes of data received! thread=" << tid << ", IP=" << clientContext->_address << std::endl;
+
+	SendDataToClient(clientContext, buffer, len);
 }
 
 void SubServer::onClientDisconnected(ClientContext *clientContext)
 {
+	//TODO: implement in derived classes. respond to the disconnecting event of a client
 	auto tid = std::this_thread::get_id();
 	std::cout << "Client disconnected! thread=" << tid << ", IP=" << clientContext->_address << std::endl;
 }
 
 size_t SubServer::isClientDataReadable(ClientContext *clientContext)
 {
+	//TODO: implement in derived classes. return the size of a single package
 	auto &buf = clientContext->_recvBuffer;
 	return buf.GetDataLength();
 }
@@ -196,13 +207,15 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 
 			std::cout << "new connection accepted! FD=" << fd << ", IP=" << szAddress << ":" << addr_in_ptr->sin_port << std::endl;
 
-			pThis->AddNewClient(fd, szAddress, addr_in_ptr->sin_port);
+			auto clientContext = pThis->AddNewClient(fd, szAddress, addr_in_ptr->sin_port);
 
 			/* We got a new connection! Set up a bufferevent for it. */
 
 			struct event_base *base = pThis->GetNextAvailableBase();
 			struct bufferevent *bev = bufferevent_socket_new(
 				base, fd, BEV_OPT_CLOSE_ON_FREE);
+
+			clientContext->_bev = bev;
 
 			bufferevent_setcb(bev, [](auto bev, auto ctx) {
 				/* This callback is invoked when there is data to read on bev. */
@@ -260,6 +273,10 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 
 			this->_listenerReady.set_value(true);
 			event_base_dispatch(_base);
+
+			std::cout << "SubServer terminated on port " << port << ". thread=" << tid << std::endl;
+			this->_server->DecreaseReference();
+			this->ReleaseWorkerThreads();
 		}
 		else
 		{
@@ -298,11 +315,36 @@ void SubServer::ReleaseWorkerThreads()
 	}
 }
 
-void SubServer::AddNewClient(int fd, const char*ip, unsigned int port)
+std::shared_ptr<ClientContext> SubServer::AddNewClient(int fd, const char*ip, unsigned int port)
 {
 	_clients.lock(fd);
-	_clients[fd] = std::make_shared<ClientContext>(fd, ip, port);
+	auto client = std::make_shared<ClientContext>(fd, ip, port);
+	_clients[fd] = client;
 	_clients.unlock(fd);
+	return client;
+}
+
+size_t SubServer::SendDataToClient(int fd, char *buffer, size_t len)
+{
+	_clients.lock(fd);
+	auto it = _clients.find(fd);
+	if (it != _clients.end(fd))
+	{
+		auto clientContext = it->second;
+		_clients.unlock(fd);
+
+		auto output = bufferevent_get_output(clientContext->_bev);
+		evbuffer_add(output, buffer, len);
+		return len;
+	}
+	_clients.unlock(fd);
+	return 0;
+}
+
+size_t SubServer::SendDataToClient(ClientContext *clientContext, char *buffer, size_t len)
+{
+	auto output = bufferevent_get_output(clientContext->_bev);
+	evbuffer_add(output, buffer, len);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -370,6 +412,22 @@ bool Server::CreateSubServer(unsigned int port, void *param)
 		DecreaseReference();
 		std::wcout << "Failed to create TCP subserver at port " << port << std::endl;
 	}
+}
+
+void Server::TerminateSubServer(unsigned int port)
+{
+	_subServers.lock(port);
+	auto it = _subServers.find(port);
+	if (it != _subServers.end(port))
+	{
+		auto subServer = it->second;
+		_subServers.unlock(port);
+		auto fd = evconnlistener_get_fd(subServer->_listener);
+		_subServersByFD.erase(fd);
+		evconnlistener_free(subServer->_listener);
+		return;
+	}
+	_subServers.unlock(port);
 }
 
 void Server::Start()
