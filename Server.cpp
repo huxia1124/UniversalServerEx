@@ -17,7 +17,7 @@
 
 
 #include "Server.h"
-#include <string.h>
+#include <string.h>		//memset
 #include <iostream>
 #include <arpa/inet.h>
 #include <event2/event-config.h>
@@ -63,6 +63,21 @@ void ClientContext::SetPort(unsigned int port)
 	_port = port;
 }
 
+const char* ClientContext::GetPeerIP()
+{
+	return _address;
+}
+
+unsigned int ClientContext::GetPeerPort()
+{
+	return _port;
+}
+
+Buffer &ClientContext::GetReceiveBuffer()
+{
+	return _recvBuffer;
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 SubServer::SubServer(unsigned int workerThreadNumber) : _workerThreadNumber(workerThreadNumber)
@@ -98,10 +113,11 @@ SubServer::~SubServer()
 
 void SubServer::onThreadStart(size_t threadIndex)
 {
-
 	auto tid = std::this_thread::get_id();
 	std::cout << "Worker thread started. thread[" << threadIndex << "]=" << tid << std::endl;
 	_baseWorkers[threadIndex] = event_base_new();
+
+	//Create a dummy event to keep the event loop alive even if there is no socket event.
 	_workerDefaultEvents[threadIndex] = event_new(_baseWorkers[threadIndex], -1, EV_READ, [](auto fd, auto what, auto arg) {
 		//Do nothing
 		//std::cout << "Dummy event triggered. TID=" << std::this_thread::get_id() << std::endl;
@@ -125,6 +141,7 @@ void SubServer::onThreadRun(size_t threadIndex)
 
 ClientContext* SubServer::onCreateNewClientContext()
 {
+	//TODO: in derived class, create an object of ClientContext-derived class and return it. must be created using 'new' keyword
 	return new ClientContext();
 }
 
@@ -183,7 +200,7 @@ void SubServer::onClientDisconnected(ClientContext *clientContext)
 size_t SubServer::isClientDataReadable(ClientContext *clientContext)
 {
 	//TODO: implement in derived classes. return the size of a single package
-	auto &buf = clientContext->_recvBuffer;
+	auto &buf = clientContext->GetReceiveBuffer();
 	return buf.GetDataLength();
 }
 
@@ -422,27 +439,6 @@ void Server::LinkSubserverByFD(unsigned int port, int fd)
 		return;
 	}
 	_subServers.unlock(port);
-}
-
-bool Server::CreateSubServer(unsigned int port, void *param)
-{
-	auto subServer = std::make_shared<SubServer>();
-
-	IncreaseReference();
-	subServer->SetServer(this);
-	if (subServer->CreateListeningHandler(port))
-	{
-		subServer->_serverParam = param;
-
-		_subServers.lock(port);
-		_subServers[port] = subServer;
-		_subServers.unlock(port);
-	}
-	else
-	{
-		DecreaseReference();
-		std::wcout << "Failed to create TCP subserver at port " << port << std::endl;
-	}
 }
 
 void Server::TerminateSubServer(unsigned int port)

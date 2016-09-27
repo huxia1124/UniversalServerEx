@@ -34,6 +34,7 @@
 #include <atomic>
 #include "Buffer.h"
 #include <future>
+#include <iostream>
 
 //////////////////////////////////////////////////////////////////////////
 class Server;
@@ -64,8 +65,9 @@ protected:
 	void SetPort(unsigned int port);
 
 public:
-
-
+	const char* GetPeerIP();
+	unsigned int GetPeerPort();
+	Buffer &GetReceiveBuffer();
 
 };
 
@@ -106,9 +108,12 @@ protected:
 	virtual void onThreadRun(size_t threadIndex);
 
 protected:
-	virtual ClientContext* onCreateNewClientContext();
 	virtual void preClientReceived(int fd, char *buffer, size_t len);
 	virtual void preClientDisconnected(int fd);
+
+protected:
+	//Methods to override in subclasses
+	virtual ClientContext* onCreateNewClientContext();
 	virtual void onClientReceived(ClientContext *clientContext, char *buffer, size_t len);
 	virtual void onClientDisconnected(ClientContext *clientContext);
 	virtual size_t isClientDataReadable(ClientContext *clientContext);
@@ -154,7 +159,29 @@ protected:
 public:
 
 	//Create a TCP subserver at specified port
-	bool CreateSubServer(unsigned int port, void *param);
+
+	template <class SubServerType>
+	bool CreateSubServer(unsigned int port, void *param)
+	{
+		auto subServer = std::make_shared<SubServerType>();
+
+		IncreaseReference();
+		subServer->SetServer(this);
+		if (subServer->CreateListeningHandler(port))
+		{
+			subServer->_serverParam = param;
+
+			_subServers.lock(port);
+			_subServers[port] = subServer;
+			_subServers.unlock(port);
+		}
+		else
+		{
+			DecreaseReference();
+			std::wcout << "Failed to create TCP subserver at port " << port << std::endl;
+		}
+	}
+
 	void TerminateSubServer(unsigned int port);
 
 	void Start();
