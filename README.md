@@ -4,7 +4,7 @@ An implementation of multi-threaded TCP asynchronous server using libevent. Curr
 
 ### Some keywords
  * C++
- * C++11 (thread, mutex, lambda expresion, smart pointers, atomic ...)
+ * C++11 (thread, mutex, lambda expresion, smart pointers, atomic, future ...)
  * TCP
  * libevent
  * Multi-threading
