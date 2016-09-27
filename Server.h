@@ -52,14 +52,19 @@ protected:
 	bufferevent *_bev = nullptr;
 
 public:
+	ClientContext();
 	ClientContext(int fd, const char*ip, unsigned int port);
 	virtual ~ClientContext();
 
 protected:
 	void AppendRecvBufferData(char *buffer, size_t len);
 
+	void SetFD(int fd);
+	void SetIP(const char *ip);
+	void SetPort(unsigned int port);
 
 public:
+
 
 
 };
@@ -101,6 +106,7 @@ protected:
 	virtual void onThreadRun(size_t threadIndex);
 
 protected:
+	virtual ClientContext* onCreateNewClientContext();
 	virtual void preClientReceived(int fd, char *buffer, size_t len);
 	virtual void preClientDisconnected(int fd);
 	virtual void onClientReceived(ClientContext *clientContext, char *buffer, size_t len);

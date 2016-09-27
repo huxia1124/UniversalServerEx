@@ -33,6 +33,11 @@ ClientContext::ClientContext(int fd, const char*ip, unsigned int port)
 	_port = port;
 }
 
+ClientContext::ClientContext()
+{
+
+}
+
 ClientContext::~ClientContext()
 {
 	//std::cout << "ClientContext destroyed." << std::endl;
@@ -43,6 +48,20 @@ void ClientContext::AppendRecvBufferData(char *buffer, size_t len)
 	_recvBuffer.AppendData(buffer, len);
 }
 
+void ClientContext::SetFD(int fd)
+{
+	_fd = fd;
+}
+
+void ClientContext::SetIP(const char *ip)
+{
+	strcpy(_address, ip);
+}
+
+void ClientContext::SetPort(unsigned int port)
+{
+	_port = port;
+}
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -102,6 +121,11 @@ void SubServer::onThreadEnd(size_t threadIndex)
 void SubServer::onThreadRun(size_t threadIndex)
 {
 	event_base_dispatch(_baseWorkers[threadIndex]);
+}
+
+ClientContext* SubServer::onCreateNewClientContext()
+{
+	return new ClientContext();
 }
 
 void SubServer::preClientReceived(int fd, char *buffer, size_t len)
@@ -317,8 +341,15 @@ void SubServer::ReleaseWorkerThreads()
 
 std::shared_ptr<ClientContext> SubServer::AddNewClient(int fd, const char*ip, unsigned int port)
 {
+	std::shared_ptr<ClientContext> client(onCreateNewClientContext());
+	if (!client)
+		return client;
+
+	client->SetFD(fd);
+	client->SetIP(ip);
+	client->SetPort(port);
+
 	_clients.lock(fd);
-	auto client = std::make_shared<ClientContext>(fd, ip, port);
 	_clients[fd] = client;
 	_clients.unlock(fd);
 	return client;
