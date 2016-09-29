@@ -21,7 +21,7 @@ MACOS_FRAMEWORKS :=
 LINUX_PACKAGES := 
 
 CFLAGS := -ggdb -ffunction-sections -O0
-CXXFLAGS := -std=c++14 -ggdb -ffunction-sections -O0
+CXXFLAGS := -std=c++14 -ggdb -ffunction-sections -O0 -fshort-wchar
 ASFLAGS := 
 LDFLAGS := -Wl,-gc-sections
 COMMONFLAGS := 

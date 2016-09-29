@@ -65,6 +65,7 @@
   <ItemGroup>
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Server.cpp" />
+    <ClCompile Include="STXProtocol.cpp" />
     <ClCompile Include="UniversalServerEx.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -77,6 +78,7 @@
   <ItemGroup>
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Server.h" />
+    <ClInclude Include="STXProtocol.h" />
     <ClInclude Include="STXUtility.h" />
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>

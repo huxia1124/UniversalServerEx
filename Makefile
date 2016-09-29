@@ -35,7 +35,7 @@ error:
 	$(error Invalid configuration, please check your inputs)
 endif
 
-SOURCEFILES := Buffer.cpp Server.cpp UniversalServerEx.cpp
+SOURCEFILES := Buffer.cpp Server.cpp STXProtocol.cpp UniversalServerEx.cpp
 EXTERNAL_LIBS := 
 EXTERNAL_LIBS_COPIED := $(foreach lib, $(EXTERNAL_LIBS),$(BINARYDIR)/$(notdir $(lib)))
 

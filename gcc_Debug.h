@@ -51,7 +51,7 @@
 #define __SIZE_MAX__ 0xffffffffffffffffUL
 #endif
 #ifndef __WCHAR_MAX__
-#define __WCHAR_MAX__ 0x7fffffff
+#define __WCHAR_MAX__ 0xffff
 #endif
 #ifndef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_1
 #define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_1 1
@@ -162,7 +162,7 @@
 #define __SCHAR_MAX__ 0x7f
 #endif
 #ifndef __WCHAR_MIN__
-#define __WCHAR_MIN__ (-__WCHAR_MAX__ - 1)
+#define __WCHAR_MIN__ 0
 #endif
 #ifndef __DBL_DIG__
 #define __DBL_DIG__ 15
@@ -577,7 +577,7 @@
 #define __UINT16_TYPE__ short unsigned int
 #endif
 #ifndef __WCHAR_TYPE__
-#define __WCHAR_TYPE__ int
+#define __WCHAR_TYPE__ short unsigned int
 #endif
 #ifndef __SIZEOF_FLOAT__
 #define __SIZEOF_FLOAT__ 4
@@ -654,6 +654,9 @@
 #ifndef __SIZEOF_INT128__
 #define __SIZEOF_INT128__ 16
 #endif
+#ifndef __WCHAR_UNSIGNED__
+#define __WCHAR_UNSIGNED__ 1
+#endif
 #ifndef __LDBL_MAX_10_EXP__
 #define __LDBL_MAX_10_EXP__ 4932
 #endif
@@ -670,7 +673,7 @@
 #define __INT_LEAST32_TYPE__ int
 #endif
 #ifndef __SIZEOF_WCHAR_T__
-#define __SIZEOF_WCHAR_T__ 4
+#define __SIZEOF_WCHAR_T__ 2
 #endif
 #ifndef __UINT64_TYPE__
 #define __UINT64_TYPE__ long unsigned int

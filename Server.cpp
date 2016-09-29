@@ -114,7 +114,7 @@ SubServer::~SubServer()
 void SubServer::onThreadStart(size_t threadIndex)
 {
 	auto tid = std::this_thread::get_id();
-	std::cout << "Worker thread started. thread[" << threadIndex << "]=" << tid << std::endl;
+	//std::cout << "Worker thread started. thread[" << threadIndex << "]=" << tid << std::endl;
 	_baseWorkers[threadIndex] = event_base_new();
 
 	//Create a dummy event to keep the event loop alive even if there is no socket event.
@@ -278,9 +278,10 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 						break;
 					dataLen -= readLen;
 					pThisInner->preClientReceived(bfd, szBuffer, readLen);
+					evbuffer_drain(input, readLen);
 				}
 
-				evbuffer_drain(input, dataLenOriginal);
+				//evbuffer_drain(input, dataLenOriginal);
 
 				/* Copy all the data from the input buffer to the output buffer. */
 				//evbuffer_add_buffer(output, input);
