@@ -78,7 +78,7 @@ class SubServer
 {
 	friend class Server;
 public:
-	SubServer(unsigned int workerThreadNumber = 4);
+	SubServer();
 	virtual ~SubServer();
 
 protected:
@@ -125,6 +125,7 @@ private:
 	event_base *GetNextAvailableBase();
 	void ReleaseWorkerThreads();
 	std::shared_ptr<ClientContext> AddNewClient(int fd, const char*ip, unsigned int port);
+	void Initialize(unsigned int workerThreadNumber);
 
 public:
 	size_t SendDataToClient(int fd, char *buffer, size_t len);
@@ -155,15 +156,21 @@ protected:
 	void IncreaseReference();
 	void DecreaseReference();
 	void LinkSubserverByFD(unsigned int port, int fd);
-	
+
 public:
 
 	//Create a TCP subserver at specified port
 
 	template <class SubServerType>
-	bool CreateSubServer(unsigned int port, void *param)
+	bool CreateSubServer(unsigned int port, void *param, unsigned int workerThreadNumber = 0)
 	{
+		if (workerThreadNumber == 0)
+		{
+			workerThreadNumber = std::thread::hardware_concurrency();
+		}
+
 		auto subServer = std::make_shared<SubServerType>();
+		subServer->Initialize(workerThreadNumber);
 
 		IncreaseReference();
 		subServer->SetServer(this);

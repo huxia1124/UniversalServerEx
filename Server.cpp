@@ -80,16 +80,9 @@ Buffer &ClientContext::GetReceiveBuffer()
 
 //////////////////////////////////////////////////////////////////////////
 
-SubServer::SubServer(unsigned int workerThreadNumber) : _workerThreadNumber(workerThreadNumber)
+SubServer::SubServer()
 {
-	_base = event_base_new();
-	_baseWorkers = new event_base*[workerThreadNumber];
-	_workerDefaultEvents = new event*[workerThreadNumber];
-	for (auto i = 0; i < workerThreadNumber; i++)
-	{
-		_baseWorkers[i] = nullptr;
-		_workerDefaultEvents[i] = nullptr;
-	}
+
 }
 
 SubServer::~SubServer()
@@ -223,6 +216,7 @@ void SubServer::CreateWorkerThreads()
 
 		_workerThreads.push_back(thread);
 	}
+	std::cout << _workerThreads.size() << "worker threads created!" << std::endl;
 }
 
 bool SubServer::CreateListeningHandler(unsigned int port)
@@ -268,7 +262,7 @@ bool SubServer::CreateListeningHandler(unsigned int port)
 				auto bfd = bufferevent_getfd(bev);
 
 				SubServer *pThisInner = (SubServer*)ctx;
-				const size_t bufferSize = 2048;
+				const size_t bufferSize = 4096;
 				char szBuffer[bufferSize];
 				size_t readLen = 0;
 				while (dataLen > 0)
@@ -371,6 +365,19 @@ std::shared_ptr<ClientContext> SubServer::AddNewClient(int fd, const char*ip, un
 	_clients[fd] = client;
 	_clients.unlock(fd);
 	return client;
+}
+
+void SubServer::Initialize(unsigned int workerThreadNumber)
+{
+	_workerThreadNumber = workerThreadNumber;
+	_base = event_base_new();
+	_baseWorkers = new event_base*[workerThreadNumber];
+	_workerDefaultEvents = new event*[workerThreadNumber];
+	for (auto i = 0; i < workerThreadNumber; i++)
+	{
+		_baseWorkers[i] = nullptr;
+		_workerDefaultEvents[i] = nullptr;
+	}
 }
 
 size_t SubServer::SendDataToClient(int fd, char *buffer, size_t len)

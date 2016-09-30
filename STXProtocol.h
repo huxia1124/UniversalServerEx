@@ -278,4 +278,5 @@ public:
 	unsigned char GetNextFieldType();
 	static const char *GetTypeString(unsigned char nType);
 	void SeekReadToBegin();
+	void Clear();
 };

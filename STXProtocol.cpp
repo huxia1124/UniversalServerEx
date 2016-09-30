@@ -791,9 +791,7 @@ long CSTXProtocol::AppendData( GUID &val )
 {
 	WriteDataType(STXPROTOCOL_DATA_TYPE_GUID);
 	Expand(sizeof(val));
-	*((GUID*)(GetDataContentBasePtr() + m_nCurentWriteOffset)) = val;
-	m_nCurentWriteOffset += sizeof(val);
-	UpdatePrefix();
+	WriteRawData(&val, sizeof(val));
 	return sizeof(val);
 }
 
@@ -803,7 +801,6 @@ long CSTXProtocol::AppendData( CSTXProtocol *pVal )
 	long nDataLen = pVal->GetDataLen();
 	WriteCompactInteger(nDataLen);
 	WriteRawData(pVal->GetBasePtr(), nDataLen);
-	//UpdatePrefix();
 	return nDataLen;
 }
 
@@ -1012,14 +1009,14 @@ int CSTXProtocol::DecodeWithDecrypt(void * pData, long * pDataReadLen, uint32_t 
 		r += *((char*)(pszData + i));
 	}
 	char crc = (char)((r % 256) & 0xFF);
-	pszData[0] = crc;
+	char desired_crc = DecryptByte(pszData[0], k);
 
-	if (((char)(r & 0xFF)) != crc)
+	if (crc != desired_crc)
 	{
-		//AssertBreak(_T("DecodeWithDecrypt() : Error parsing package, CRC mismatch."));
+		throw std::runtime_error("DecodeWithDecrypt(void*,long*,uint32_t) : Error parsing package, CRC mismatch.");
 		return 8;	//Error parsing package, CRC mismatch 
 	}
-
+	pszData[0] = crc;
 
 	return Decode(pData, pDataReadLen);
 }
@@ -1062,6 +1059,8 @@ void CSTXProtocol::ResetPosition()
 {
 	m_nCurentWriteOffset = 0;
 	m_nCurentReadOffset = 0;
+	unsigned char &currentCRC = *(unsigned char*)GetCRCBytePtr();
+	currentCRC = 0;
 	UpdatePrefix();
 }
 
@@ -1956,6 +1955,11 @@ void CSTXProtocol::SeekReadToBegin()
 	m_nCurentReadOffset = 0;
 }
 
+void CSTXProtocol::Clear()
+{
+	ResetPosition();
+}
+
 long CSTXProtocol::AppendDataPair(const char *lpszVal1, const char *lpszVal2)
 {
 	WriteDataType(STXPROTOCOL_DATA_TYPE_UTF8_PAIR);
@@ -2004,8 +2008,6 @@ long CSTXProtocol::AppendDataPair(const char16_t *lpszVal1, const char16_t *lpsz
 	WriteRawData((void*)str2.c_str(), len2);	//Skip nullptr-termination
 	nTotalLength += len2;
 
-	UpdatePrefix();
-
 	return nTotalLength;
 }
 
@@ -2023,11 +2025,8 @@ long CSTXProtocol::AppendDataPair( const char *lpszVal, uint32_t dwVal )
 	nTotalLength += len1;
 
 	Expand(sizeof(dwVal));
-	*((uint32_t*)(GetDataContentBasePtr() + m_nCurentWriteOffset)) = dwVal;
-	m_nCurentWriteOffset += sizeof(dwVal);
+	WriteRawData(&dwVal, sizeof(dwVal));
 	nTotalLength += sizeof(dwVal);
-
-	UpdatePrefix();
 
 	return nTotalLength;
 }
@@ -2047,11 +2046,8 @@ long CSTXProtocol::AppendDataPair(const char16_t *lpszVal, uint32_t dwVal)
 	nTotalLength += len1;
 
 	Expand(sizeof(dwVal));
-	*((uint32_t*)(GetDataContentBasePtr() + m_nCurentWriteOffset)) = dwVal;
-	m_nCurentWriteOffset += sizeof(dwVal);
+	WriteRawData(&dwVal, sizeof(dwVal));
 	nTotalLength += sizeof(dwVal);
-
-	UpdatePrefix();
 
 	return nTotalLength;
 }
