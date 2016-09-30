@@ -216,7 +216,7 @@ void SubServer::CreateWorkerThreads()
 
 		_workerThreads.push_back(thread);
 	}
-	std::cout << _workerThreads.size() << "worker threads created!" << std::endl;
+	std::cout << _workerThreads.size() << " worker threads created!" << std::endl;
 }
 
 bool SubServer::CreateListeningHandler(unsigned int port)
