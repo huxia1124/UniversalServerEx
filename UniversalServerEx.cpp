@@ -3,6 +3,7 @@
 #include <iostream>
 #include "Server.h"
 #include "STXProtocol.h"
+#include <signal.h>
 using namespace std;
 
 class MyClientContext : public ClientContext
@@ -35,7 +36,7 @@ protected:
 	virtual void onClientReceived(ClientContext *clientContext, char *buffer, size_t len) override
 	{
 		auto tid = std::this_thread::get_id();
-		std::cout << len << " bytes of data received in MySubServer! thread=" << tid << ", IP=" << clientContext->GetPeerIP() << std::endl;
+		//std::cout << len << " bytes of data received in MySubServer! thread=" << tid << ", IP=" << clientContext->GetPeerIP() << std::endl;
 
 		SendDataToClient(clientContext, buffer, len);
 	}
@@ -120,6 +121,9 @@ protected:
 
 int main(int argc, char *argv[])
 {
+	signal(SIGPIPE, SIG_IGN);
+
+
 	char sz[] = "Hardware concurrency=";
 	cout << sz << std::thread::hardware_concurrency() << endl;
 

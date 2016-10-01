@@ -97,7 +97,9 @@ SubServer::~SubServer()
 	{
 		_workerThreads[i]->join();
 	}
-	_listeningThread->join();
+	if (_listeningThread && _listeningThread->joinable()) {
+		_listeningThread->join();
+	}
 
 	delete[]_workerDefaultEvents;
 	delete[]_baseWorkers;

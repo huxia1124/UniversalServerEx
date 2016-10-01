@@ -15,13 +15,13 @@ OBJCOPY := objcopy
 PREPROCESSOR_MACROS := NDEBUG=1 RELEASE=1
 INCLUDE_DIRS := 
 LIBRARY_DIRS := 
-LIBRARY_NAMES := 
+LIBRARY_NAMES := event pthread event_pthreads
 ADDITIONAL_LINKER_INPUTS := 
 MACOS_FRAMEWORKS := 
 LINUX_PACKAGES := 
 
 CFLAGS := -ggdb -ffunction-sections -O3
-CXXFLAGS := -std=c++14 -ggdb -ffunction-sections -O3
+CXXFLAGS := -std=c++14 -ggdb -ffunction-sections -O3 -fshort-wchar
 ASFLAGS := 
 LDFLAGS := -Wl,-gc-sections
 COMMONFLAGS := 

@@ -51,7 +51,7 @@
 #define __SIZE_MAX__ 0xffffffffffffffffUL
 #endif
 #ifndef __WCHAR_MAX__
-#define __WCHAR_MAX__ 0x7fffffff
+#define __WCHAR_MAX__ 0xffff
 #endif
 #ifndef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_1
 #define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_1 1
@@ -140,6 +140,9 @@
 #ifndef __DEC32_EPSILON__
 #define __DEC32_EPSILON__ 1E-6DF
 #endif
+#ifndef __OPTIMIZE__
+#define __OPTIMIZE__ 1
+#endif
 #ifndef __unix
 #define __unix 1
 #endif
@@ -162,7 +165,7 @@
 #define __SCHAR_MAX__ 0x7f
 #endif
 #ifndef __WCHAR_MIN__
-#define __WCHAR_MIN__ (-__WCHAR_MAX__ - 1)
+#define __WCHAR_MIN__ 0
 #endif
 #ifndef __DBL_DIG__
 #define __DBL_DIG__ 15
@@ -175,6 +178,9 @@
 #endif
 #ifndef __SIZEOF_POINTER__
 #define __SIZEOF_POINTER__ 8
+#endif
+#ifndef NDEBUG
+#define NDEBUG 1
 #endif
 #ifndef __GCC_ATOMIC_CHAR16_T_LOCK_FREE
 #define __GCC_ATOMIC_CHAR16_T_LOCK_FREE 2
@@ -217,6 +223,9 @@
 #endif
 #ifndef __gnu_linux__
 #define __gnu_linux__ 1
+#endif
+#ifndef RELEASE
+#define RELEASE 1
 #endif
 #ifndef __LDBL_HAS_QUIET_NAN__
 #define __LDBL_HAS_QUIET_NAN__ 1
@@ -374,9 +383,6 @@
 #endif
 #ifndef __UINT8_TYPE__
 #define __UINT8_TYPE__ unsigned char
-#endif
-#ifndef __NO_INLINE__
-#define __NO_INLINE__ 1
 #endif
 #ifndef __FLT_MANT_DIG__
 #define __FLT_MANT_DIG__ 24
@@ -574,7 +580,7 @@
 #define __UINT16_TYPE__ short unsigned int
 #endif
 #ifndef __WCHAR_TYPE__
-#define __WCHAR_TYPE__ int
+#define __WCHAR_TYPE__ short unsigned int
 #endif
 #ifndef __SIZEOF_FLOAT__
 #define __SIZEOF_FLOAT__ 4
@@ -651,6 +657,9 @@
 #ifndef __SIZEOF_INT128__
 #define __SIZEOF_INT128__ 16
 #endif
+#ifndef __WCHAR_UNSIGNED__
+#define __WCHAR_UNSIGNED__ 1
+#endif
 #ifndef __LDBL_MAX_10_EXP__
 #define __LDBL_MAX_10_EXP__ 4932
 #endif
@@ -667,7 +676,7 @@
 #define __INT_LEAST32_TYPE__ int
 #endif
 #ifndef __SIZEOF_WCHAR_T__
-#define __SIZEOF_WCHAR_T__ 4
+#define __SIZEOF_WCHAR_T__ 2
 #endif
 #ifndef __UINT64_TYPE__
 #define __UINT64_TYPE__ long unsigned int
@@ -821,12 +830,6 @@
 #endif
 #ifndef __ATOMIC_RELEASE
 #define __ATOMIC_RELEASE 3
-#endif
-#ifndef NDEBUG
-#define NDEBUG 1
-#endif
-#ifndef RELEASE
-#define RELEASE 1
 #endif
 #endif
 
