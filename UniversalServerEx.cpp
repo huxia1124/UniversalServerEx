@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
 	Server server;
 	server.CreateSubServer<MySubServer>(9988, nullptr);
-	server.CreateSubServer<MySubServer3>(9987, nullptr);
+	server.CreateSubServer<MySubServer2>(9987, nullptr);
 	server.CreateSubServer<MySubServer3>(9986, nullptr);
 
 	server.Start();
