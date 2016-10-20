@@ -363,9 +363,7 @@ std::shared_ptr<ClientContext> SubServer::AddNewClient(int fd, const char*ip, un
 	client->SetIP(ip);
 	client->SetPort(port);
 
-	_clients.lock(fd);
-	_clients[fd] = client;
-	_clients.unlock(fd);
+	_clients.insertValue(fd, client);
 	return client;
 }
 
@@ -443,9 +441,7 @@ void Server::LinkSubserverByFD(unsigned int port, int fd)
 	if (it != _subServers.end(port)) {
 		auto subServer = it->second;
 		_subServers.unlock(port);
-		_subServersByFD.lock(fd);
-		_subServersByFD[fd] = subServer;
-		_subServersByFD.unlock(fd);
+		_subServersByFD.insertValue(fd, subServer);
 		return;
 	}
 	_subServers.unlock(port);
